@@ -1,7 +1,7 @@
 Flask
-requests 
-beautifulsoup4
 gunicorn
+beautifulsoup4
+cloudscraper
 httpx
 truststore
-playwright
+user-agent-generator
