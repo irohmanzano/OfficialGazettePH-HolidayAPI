@@ -5,5 +5,7 @@ services:
     repo: https://github.com/surelle-ha/OfficialGazettePH-HolidayAPI
     plan: free
     branch: main
-    buildCommand: pip install -r requirements.txt
+    buildCommand: |
+      pip install -r requirements.txt
+      playwright install
     startCommand: gunicorn app:app
