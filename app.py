@@ -31,7 +31,12 @@ def get_holidays(year=datetime.now().year):
         return jsonify({'error': 'Failed to resolve domain name'})
 
     headers = {
-        'User-Agent': random.choice(user_agents)
+        'User-Agent': random.choice(user_agents),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Referer": "https://www.google.com"
+}
+
     }
     
     try:
