@@ -5,11 +5,13 @@ import time
 import socket
 from datetime import datetime
 import random
-import certifi
+import httpx
 import ssl
+import truststore
 
 from user_agent_generator import get_user_agents
-ssl_context = ssl.create_default_context(cafile=certifi.where())
+ssl_context = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+
 app = Flask(__name__)
 
 user_agents = get_user_agents()
@@ -33,7 +35,7 @@ def get_holidays(year=datetime.now().year):
     }
     
     try:
-        response = requests.get(url, headers=headers, timeout=10, verify=certifi.where())
+        response = httpx.get(url, headers=headers, timeout=10.0, verify=ssl_context)
     except requests.ConnectionError:
         return jsonify({'error': 'Failed to connect to the source URL'})
     except requests.Timeout:
