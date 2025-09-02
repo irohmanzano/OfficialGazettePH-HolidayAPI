@@ -5,9 +5,11 @@ import time
 import socket
 from datetime import datetime
 import random
+import certifi
+import ssl
 
 from user_agent_generator import get_user_agents
-
+ssl_context = ssl.create_default_context(cafile=certifi.where())
 app = Flask(__name__)
 
 user_agents = get_user_agents()
@@ -31,7 +33,7 @@ def get_holidays(year=datetime.now().year):
     }
     
     try:
-        response = requests.get(url, headers=headers, timeout=10)
+        response = requests.get(url, headers=headers, timeout=10, verify=certifi.where())
     except requests.ConnectionError:
         return jsonify({'error': 'Failed to connect to the source URL'})
     except requests.Timeout:
