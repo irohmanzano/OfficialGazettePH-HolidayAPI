@@ -4,7 +4,7 @@ import time
 import socket
 from datetime import datetime
 import random
-from playwright.sync_api import sync_playwright
+import cloudscraper
 
 from user_agent_generator import get_user_agents
 
@@ -26,15 +26,15 @@ def get_holidays(year=datetime.now().year):
         return jsonify({'error': 'Failed to resolve domain name'})
 
     try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            context = browser.new_context(user_agent=random.choice(user_agents))
-            page = context.new_page()
-            page.goto(url, timeout=15000)
-            content = page.content()
-            browser.close()
+        scraper = cloudscraper.create_scraper(
+            browser={'custom': random.choice(user_agents)}
+        )
+        response = scraper.get(url, timeout=15)
+        if response.status_code != 200:
+            return jsonify({'error': f'Failed to fetch page: HTTP {response.status_code}'})
+        content = response.text
     except Exception as e:
-        return jsonify({'error': f'Failed to load page with Playwright: {e}'})
+        return jsonify({'error': f'Failed to load page with cloudscraper: {e}'})
 
     try:
         soup = BeautifulSoup(content, 'html.parser')
@@ -46,9 +46,10 @@ def get_holidays(year=datetime.now().year):
             rows = table.find_all('tr')
             for row in rows[1:]:
                 cols = row.find_all('td')
-                event = cols[0].get_text(strip=True)
-                date = cols[1].get_text(strip=True)
-                holidays.append({'event': event, 'date': date, 'type': holiday_type})
+                if len(cols) >= 2:
+                    event = cols[0].get_text(strip=True)
+                    date = cols[1].get_text(strip=True)
+                    holidays.append({'event': event, 'date': date, 'type': holiday_type})
     except Exception as e:
         return jsonify({'error': f'Error processing HTML content: {e}'})
 
