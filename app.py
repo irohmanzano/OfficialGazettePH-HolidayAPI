@@ -1,19 +1,14 @@
 from flask import Flask, jsonify
-import requests
 from bs4 import BeautifulSoup
 import time
 import socket
 from datetime import datetime
 import random
-import httpx
-import ssl
-import truststore
+from playwright.sync_api import sync_playwright
 
 from user_agent_generator import get_user_agents
-ssl_context = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 
 app = Flask(__name__)
-
 user_agents = get_user_agents()
 
 @app.route('/', methods=['GET'])
@@ -24,33 +19,25 @@ def get_holidays(year=datetime.now().year):
 
     url = f'https://www.officialgazette.gov.ph/nationwide-holidays/{year}/'
     domain = url.split("//")[-1].split("/")[0]
-    
+
     try:
         ip_address = socket.gethostbyname(domain)
     except socket.gaierror:
         return jsonify({'error': 'Failed to resolve domain name'})
 
-    headers = {
-        'User-Agent': random.choice(user_agents),
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-        "Referer": "https://www.google.com"
-    }
-    
     try:
-        response = httpx.get(url, headers=headers, timeout=10.0, verify=ssl_context)
-    except requests.ConnectionError:
-        return jsonify({'error': 'Failed to connect to the source URL'})
-    except requests.Timeout:
-        return jsonify({'error': 'Request to the source URL timed out'})
-    except requests.RequestException as e:
-        return jsonify({'error': f'Request failed: {e}'})
-
-    if response.status_code != 200:
-        return jsonify({'error': f'Failed to retrieve data, status code: {response.status_code}'})
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            context = browser.new_context(user_agent=random.choice(user_agents))
+            page = context.new_page()
+            page.goto(url, timeout=15000)
+            content = page.content()
+            browser.close()
+    except Exception as e:
+        return jsonify({'error': f'Failed to load page with Playwright: {e}'})
 
     try:
-        soup = BeautifulSoup(response.content, 'html.parser')
+        soup = BeautifulSoup(content, 'html.parser')
         holidays = []
 
         tables = soup.find_all("table")
@@ -62,7 +49,6 @@ def get_holidays(year=datetime.now().year):
                 event = cols[0].get_text(strip=True)
                 date = cols[1].get_text(strip=True)
                 holidays.append({'event': event, 'date': date, 'type': holiday_type})
-
     except Exception as e:
         return jsonify({'error': f'Error processing HTML content: {e}'})
 
